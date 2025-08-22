@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NanoCoin Wallet</title>
+    <style>
+        body { font-family: Arial; margin: 40px; }
+        input, button { margin: 5px 0; padding: 5px; }
+        .section { margin-bottom: 30px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        h2 { margin-top: 0; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>NanoCoin Wallet</h1>
+
+    <div class="section">
+        <h2>Create Wallet</h2>
+        <button onclick="createWallet()">Generate New Wallet</button>
+        <pre id="wallet"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Check Balance</h2>
+        <input type="text" id="balanceAddress" placeholder="Enter public key" size="60">
+        <button onclick="checkBalance()">Check</button>
+        <pre id="balanceResult"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Send Coins</h2>
+        <input type="text" id="sendFrom" placeholder="Your private key" size="60"><br>
+        <input type="text" id="sendTo" placeholder="Recipient public key" size="60"><br>
+        <input type="number" id="sendAmount" placeholder="Amount"><br>
+        <button onclick="sendCoins()">Send</button>
+        <pre id="sendResult"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Mine Pending Transactions</h2>
+        <input type="text" id="minerAddress" placeholder="Your public key" size="60"><br>
+        <button onclick="mineCoins()">Mine</button>
+        <pre id="mineResult"></pre>
+    </div>
+
+<script>
+const API = "http://localhost:3001"; // change if backend runs on another port
+
+async function createWallet() {
+    const res = await fetch(`${API}/wallet/new`);
+    const data = await res.json();
+    document.getElementById("wallet").innerText = JSON.stringify(data, null, 2);
+}
+
+async function checkBalance() {
+    const addr = document.getElementById("balanceAddress").value;
+    const res = await fetch(`${API}/balance/${addr}`);
+    const data = await res.json();
+    document.getElementById("balanceResult").innerText = JSON.stringify(data, null, 2);
+}
+
+async function sendCoins() {
+    const from = document.getElementById("sendFrom").value;
+    const to = document.getElementById("sendTo").value;
+    const amount = Number(document.getElementById("sendAmount").value);
+    const res = await fetch(`${API}/transactions`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({privateKey: from, toAddress: to, amount})
+    });
+    const data = await res.json();
+    document.getElementById("sendResult").innerText = JSON.stringify(data, null, 2);
+}
+
+async function mineCoins() {
+    const addr = document.getElementById("minerAddress").value;
+    const res = await fetch(`${API}/mine`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({minerAddress: addr})
+    });
+    const data = await res.json();
+    document.getElementById("mineResult").innerText = JSON.stringify(data, null, 2);
+}
+</script>
+</body>
+</html>
