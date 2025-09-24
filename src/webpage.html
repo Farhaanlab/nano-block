@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>NanoCoin Explorer — Fixed</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- AOS -->
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet"/>
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
+  <!-- Feather (icons) -->
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+
+  <style>
+    body { font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial; }
+    .gradient-bg { background: linear-gradient(135deg,#1e3c72 0%,#2a5298 100%); }
+    .glass-effect { background: rgba(255,255,255,0.95); backdrop-filter: blur(6px); }
+    .card-hover:hover { transform: translateY(-5px); box-shadow: 0 12px 28px rgba(2,6,23,0.08); }
+    #vanta-bg { position:absolute; inset:0; z-index:0; }
+    .content-wrapper { position:relative; z-index:1; }
+    #liveTxFeed, #mineHistory { max-height:260px; overflow-y:auto; }
+    #walletList { max-height:360px; overflow-y:auto; }
+    pre#chainOutput { max-height:380px; overflow:auto; background:#f8fafc; padding:12px; border-radius:8px; }
+    #modal { transition: opacity .18s ease; opacity:0; pointer-events:none; }
+    #modal.show { opacity:1; pointer-events:auto; }
+    .masked { filter: blur(4px); }
+    .small-muted { font-size: 12px; color: #6b7280; }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div id="vanta-bg" aria-hidden="true"></div>
+  <div class="content-wrapper">
+
+    <!-- NAV -->
+    <nav class="bg-white shadow sticky top-0 z-30">
+      <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <i data-feather="cpu" class="text-blue-600 h-6 w-6"></i>
+          <span class="font-semibold text-lg">NanoCoin Explorer</span>
+        </div>
+        <div class="hidden md:flex gap-6 text-sm">
+          <a href="#wallet" class="text-blue-600">Wallet</a>
+          <a href="#transactions" class="hover:text-blue-600">Transactions</a>
+          <a href="#blockchain" class="hover:text-blue-600">Blockchain</a>
+          <a href="#walletPlayground" class="hover:text-blue-600">Playground</a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- HERO -->
+    <header class="gradient-bg text-white text-center py-16 px-6">
+      <h1 class="text-4xl md:text-5xl font-extrabold mb-3" data-aos="fade-up">Interactive Blockchain Playground</h1>
+      <p class="text-lg max-w-2xl mx-auto opacity-90" data-aos="fade-up" data-aos-delay="120">
+        Generate wallets, send transactions, mine blocks, and watch balances update in real time.
+      </p>
+      <a href="#wallet" class="inline-block mt-6 px-6 py-3 bg-white text-blue-700 rounded shadow" data-aos="fade-up" data-aos-delay="220">
+        Get started → <i data-feather="arrow-right" class="inline ml-2"></i>
+      </a>
+    </header>
+
+    <!-- MAIN -->
+    <main class="max-w-6xl mx-auto px-6 py-12 space-y-16">
+
+      <!-- Wallet Management -->
+      <section id="wallet" data-aos="fade-up">
+        <h2 class="text-2xl font-bold mb-4">Wallet Management</h2>
+        <div class="grid md:grid-cols-2 gap-6">
+          <div class="glass-effect rounded-lg p-6 shadow card-hover">
+            <h3 class="text-lg font-semibold mb-2">Generate Wallet</h3>
+            <p class="small-muted mb-3">Creates a wallet using your backend /wallet endpoint. Private key is shown but masked by default.</p>
+
+            <div class="flex gap-3 mb-3">
+              <button onclick="generateWallet()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center gap-2">
+                <i data-feather="plus-circle"></i> Generate
+              </button>
+              <button onclick="copyLastPublic()" class="px-4 py-2 border rounded text-gray-700">Copy Last PubKey</button>
+            </div>
+
+            <div id="walletOutput" class="mt-4 text-sm text-gray-800"></div>
+          </div>
+
+          <div class="glass-effect rounded-lg p-6 shadow card-hover">
+            <h3 class="text-lg font-semibold mb-2">Check Balance</h3>
+            <input id="balanceAddress" placeholder="Enter public key" class="w-full border p-2 rounded mb-3"/>
+            <div class="flex gap-3">
+              <button onclick="checkBalance()" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded flex items-center gap-2">
+                <i data-feather="dollar-sign"></i> Check
+              </button>
+              <button onclick="clearBalance()" class="px-4 py-2 border rounded">Clear</button>
+            </div>
+            <div id="balanceOutput" class="mt-4 text-xl font-semibold text-green-700"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Transactions -->
+      <section id="transactions" data-aos="fade-up">
+        <h2 class="text-2xl font-bold mb-4">Transaction Center</h2>
+
+        <div class="glass-effect rounded-lg p-6 shadow card-hover mb-6">
+          <div class="grid md:grid-cols-3 gap-3">
+            <input id="fromAddress" placeholder="From Address (public key)" class="border p-2 rounded"/>
+            <input id="toAddress" placeholder="To Address (public key)" class="border p-2 rounded"/>
+            <input id="amount" type="number" placeholder="Amount" class="border p-2 rounded"/>
+          </div>
+
+          <div class="mt-4 flex gap-3">
+            <button onclick="sendTransaction()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded flex items-center gap-2">
+              <i data-feather="send"></i> Send Transaction
+            </button>
+            <button onclick="clearTxOutput()" class="px-4 py-2 border rounded">Clear</button>
+          </div>
+
+          <div id="txOutput" class="mt-4 text-sm"></div>
+        </div>
+
+        <h3 class="font-semibold mb-2">Transaction History</h3>
+        <div id="liveTxFeed" class="bg-white border rounded p-3 space-y-3"></div>
+      </section>
+
+      <!-- Blockchain -->
+      <section id="blockchain" data-aos="fade-up">
+        <h2 class="text-2xl font-bold mb-4">Blockchain Explorer</h2>
+
+        <div class="grid md:grid-cols-2 gap-6">
+          <div class="glass-effect rounded-lg p-6 shadow card-hover">
+            <h3 class="text-lg font-semibold mb-2">Mine Block</h3>
+            <input id="minerAddressInput" placeholder="Miner Address (public key)" class="w-full border p-2 rounded mb-3"/>
+            <div class="flex gap-3 mb-3">
+              <button onclick="mineBlock()" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded flex items-center gap-2">
+                <i data-feather="hard-drive"></i> Mine
+              </button>
+              <button onclick="viewChain()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded flex items-center gap-2">
+                <i data-feather="database"></i> View Chain
+              </button>
+            </div>
+
+            <div id="mineOutput" class="text-sm mb-4"></div>
+
+            <h4 class="font-semibold mb-2">Mined Rewards History</h4>
+            <div id="mineHistory" class="space-y-2"></div>
+          </div>
+
+          <div class="glass-effect rounded-lg p-6 shadow card-hover">
+            <h3 class="text-lg font-semibold mb-2">Full Chain</h3>
+            <pre id="chainOutput" class="text-xs"></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- Wallet Playground -->
+      <section id="walletPlayground" data-aos="fade-up">
+        <h2 class="text-2xl font-bold mb-4">Wallet Playground</h2>
+        <p class="small-muted mb-4">All wallets generated in this session. Copy public key, show/hide private key, view live balances.</p>
+        <div id="walletList" class="grid md:grid-cols-2 gap-4"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- modal -->
+  <div id="modal" class="fixed inset-0 z-50 flex items-center justify-center">
+    <div class="bg-black/40 absolute inset-0"></div>
+    <div class="bg-white p-6 rounded z-10 w-full max-w-md text-center">
+      <h3 id="modal-title" class="text-lg font-semibold mb-2"></h3>
+      <p id="modal-message" class="mb-4"></p>
+      <button onclick="hideModal()" class="px-4 py-2 bg-blue-600 text-white rounded">OK</button>
+    </div>
+  </div>
+
+  <!-- libs (Three + Vanta last) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r121/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.globe.min.js"></script>
+
+  <script>
+  // ---- FULL SCRIPT (Updated) ----
+  const API_BASE = "http://localhost:3001";
+  let allWallets = [];
+  let txFeed = [];
+  let mineHistory = [];
+  const POLL_MS = 5000;
+
+  function showModal(title, message){
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-message').textContent = message;
+    document.getElementById('modal').classList.add('show');
+  }
+  function hideModal(){ document.getElementById('modal').classList.remove('show'); }
+  function nowISO(){ return new Date().toLocaleTimeString(); }
+
+  async function fetchJson(url, opts){
+    const r = await fetch(url, opts);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
+  }
+
+  // WALLET FUNCTIONS
+  function renderWalletList(){
+    const container = document.getElementById('walletList');
+    container.innerHTML = allWallets.map((w, idx) => {
+      return `
+        <div class="glass-effect p-4 rounded shadow card-hover">
+          <div class="flex justify-between items-start">
+            <div>
+              <div class="font-semibold">Wallet ${idx+1}</div>
+              <div class="text-xs break-all font-mono mt-1">${w.publicKey}</div>
+            </div>
+            <div class="text-right">
+              <div class="text-xs text-gray-500">Balance</div>
+              <div id="bal-${idx}" class="text-lg font-bold text-green-700">${w.balance}</div>
+              <button onclick="copyPubKey(${idx})" class="mt-2 text-xs text-blue-600">Copy PubKey</button>
+            </div>
+          </div>
+          <div class="mt-3 text-xs text-gray-600">
+            Private: <span id="priv-${idx}" class="font-mono ${w.showPrivate ? '' : 'masked'}">${w.privateKey}</span>
+            <button onclick="togglePriv(${idx})" class="ml-2 text-xs text-blue-600">Show/Hide</button>
+          </div>
+        </div>`;
+    }).join('');
+    feather.replace();
+  }
+
+  function copyPubKey(idx){
+    navigator.clipboard.writeText(allWallets[idx].publicKey)
+      .then(()=> showModal('Copied','Public key copied'));
+  }
+
+  function copyLastPublic() {
+    if (allWallets.length === 0) return showModal('Error', 'No wallets generated yet');
+    const lastWallet = allWallets[allWallets.length - 1];
+    navigator.clipboard.writeText(lastWallet.publicKey)
+      .then(() => showModal('Copied', 'Public key copied'))
+      .catch(() => showModal('Error', 'Failed to copy'));
+  }
+
+  function togglePriv(idx){
+    allWallets[idx].showPrivate = !allWallets[idx].showPrivate;
+    const el = document.getElementById('priv-'+idx);
+    if (allWallets[idx].showPrivate) el.classList.remove('masked');
+    else el.classList.add('masked');
+  }
+
+  async function generateWallet(){
+    const data = await fetchJson(`${API_BASE}/wallet`);
+    const pub = data.publicKey || data.address;
+    const priv = data.privateKey;
+    const entry = { publicKey: pub, privateKey: priv, balance: 0, showPrivate: false };
+    allWallets.push(entry);
+    renderWalletList();
+    document.getElementById('walletOutput').innerHTML = `
+      <div class="text-sm">
+        <div><b>Public Key:</b> <span class="font-mono break-all">${pub}</span></div>
+        <div class="mt-2"><b>Private Key:</b> <span class="font-mono masked" id="lastPrivate">${priv}</span>
+        <button onclick="toggleLastPrivate()" class="ml-2 text-xs text-blue-600">Show/Hide</button></div>
+      </div>`;
+    document.getElementById('fromAddress').value = pub;
+    document.getElementById('minerAddressInput').value = pub;
+    await updateWalletBalances();
+  }
+
+  function toggleLastPrivate(){
+    document.getElementById('lastPrivate').classList.toggle('masked');
+  }
+
+  // BALANCE
+  async function fetchBalance(pub){
+    const r = await fetch(`${API_BASE}/balance/${encodeURIComponent(pub)}`);
+    const d = await r.json();
+    return Number(d.balance);
+  }
+
+  async function updateWalletBalances(){
+    const results = await Promise.all(allWallets.map(w => fetchBalance(w.publicKey)));
+    results.forEach((bal,i)=>{
+      allWallets[i].balance = bal;
+      const el = document.getElementById('bal-'+i);
+      if (el) el.textContent = bal;
+    });
+  }
+
+  async function checkBalance(){
+    const addr = document.getElementById('balanceAddress').value;
+    if (!addr) return showModal('Validation','Enter an address');
+    const b = await fetchBalance(addr);
+    document.getElementById('balanceOutput').textContent = b + ' coins';
+  }
+
+  function clearBalance(){
+    document.getElementById('balanceAddress').value = '';
+    document.getElementById('balanceOutput').textContent = '';
+  }
+
+  // TRANSACTIONS
+  function renderTxFeed(){
+    document.getElementById('liveTxFeed').innerHTML = txFeed.map(t=>`
+      <div class="p-3 border rounded bg-white text-sm">
+        <div class="flex justify-between items-center">
+          <div class="text-xs text-gray-500">${t.time}</div>
+          <div class="text-xs ${t.status==='pending' ? 'text-yellow-600' : t.status==='failed' ? 'text-red-600' : 'text-green-600'} font-semibold ml-2">${t.status ? t.status.toUpperCase() : 'OK'}</div>
+        </div>
+        <div><b>From:</b> ${t.from}</div>
+        <div><b>To:</b> ${t.to}</div>
+        <div class="text-green-700 font-bold">${t.amount}</div>
+        ${t.error ? `<div class="text-xs text-red-600 mt-1">${t.error}</div>` : ''}
+      </div>`).join('');
+  }
+
+  async function fetchTransactionHistory() {
+    try {
+      const data = await fetchJson(`${API_BASE}/transactions`);
+      txFeed = data.map(tx => ({
+        from: tx.fromAddress,
+        to: tx.toAddress,
+        amount: tx.amount,
+        status: tx.status || 'confirmed',
+        time: tx.timestamp || nowISO()
+      }));
+      renderTxFeed();
+    } catch(e) { console.error('Failed to fetch transaction history', e); }
+  }
+
+  function pushTxToFeed(tx){
+    tx.time = tx.time || nowISO();
+    txFeed.unshift(tx);
+    if (txFeed.length > 100) txFeed.length = 100;
+    renderTxFeed();
+  }
+
+  async function sendTransaction(){
+    const from = document.getElementById('fromAddress').value;
+    const to = document.getElementById('toAddress').value;
+    const amount = parseInt(document.getElementById('amount').value, 10);
+    if (!from || !to || isNaN(amount) || amount <= 0) return showModal('Validation','Please provide from, to, and a positive amount');
+    const sender = allWallets.find(w=>w.publicKey===from);
+    if (!sender) return showModal('Error','Sender not found');
+    if (amount > sender.balance) return showModal('Error','Insufficient confirmed balance. Mine or receive funds first.');
+
+    const pendingTx = { from, to, amount, status: 'pending', time: nowISO() };
+    txFeed.unshift(pendingTx);
+    if (txFeed.length > 100) txFeed.length = 100;
+    renderTxFeed();
+    document.getElementById('txOutput').textContent = 'Transaction queued (pending confirmation).';
+
+    try {
+      const res = await fetch(`${API_BASE}/transaction`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ fromAddress: from, toAddress: to, amount, privateKey: sender.privateKey })
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        pendingTx.status = 'failed';
+        pendingTx.error = data && (data.error || data.message) ? (data.error || data.message) : 'Transaction rejected';
+        renderTxFeed();
+        showModal('Transaction failed', pendingTx.error);
+        document.getElementById('txOutput').textContent = '';
+        await updateWalletBalances();
+        return;
+      }
+
+      pendingTx.status = 'queued';
+      if (data.tx && data.tx.signature) pendingTx.id = data.tx.signature;
+      renderTxFeed();
+      document.getElementById('txOutput').textContent = 'Transaction accepted into the pending pool. Mine a block to confirm.';
+    } catch (e) {
+      pendingTx.status = 'failed';
+      pendingTx.error = e.message;
+      renderTxFeed();
+      showModal('Network error', e.message);
+      document.getElementById('txOutput').textContent = '';
+      await updateWalletBalances();
+    }
+  }
+
+  function clearTxOutput(){ document.getElementById('txOutput').textContent = ''; }
+
+  // MINING
+  async function mineBlock(){
+    const miner = document.getElementById('minerAddressInput').value;
+    if (!miner) return showModal('Validation','Enter a miner address');
+    const pre = await fetchBalance(miner);
+    try {
+      const res = await fetch(`${API_BASE}/mine`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ minerAddress: miner })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        showModal('Mining failed', data && (data.error || data.message) ? (data.error || data.message) : 'Mine endpoint failed');
+        return;
+      }
+      const post = await fetchBalance(miner);
+      const delta = post - pre;
+      mineHistory.unshift({ to: miner, amount: delta, time: nowISO() });
+      document.getElementById('mineHistory').innerHTML = mineHistory.map(m=>`
+        <div class="p-2 border rounded bg-white text-sm">${m.time} — ${m.to} +${m.amount}</div>`).join('');
+      document.getElementById('mineOutput').textContent = `Mined block. Reward: +${delta} to ${miner}`;
+      await updateWalletBalances();
+      txFeed = txFeed.filter(t => t.status !== 'pending' && t.status !== 'queued');
+      renderTxFeed();
+    } catch (e) {
+      showModal('Network error', e.message);
+    }
+  }
+
+  async function viewChain(){
+    const d = await fetchJson(`${API_BASE}/chain`);
+    document.getElementById('chainOutput').textContent = JSON.stringify(d, null, 2);
+  }
+
+  // INIT
+  window.addEventListener('load', async ()=>{
+    feather.replace();
+    AOS.init();
+    VANTA.GLOBE({el:"#vanta-bg",color:0x3b82f6,backgroundColor:0xf8fafc});
+    await updateWalletBalances();
+    await viewChain();
+    await fetchTransactionHistory();
+    setInterval(updateWalletBalances, POLL_MS);
+  });
+  </script>
+</body>
+</html>
